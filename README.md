@@ -26,12 +26,12 @@ Hunting-Leopard-with-half-a-brain/
 ├── README.md
 ├── requirements.txt
 │
-├── [ IGNORED BY GIT ] ---------
+├── -------------- [ IGNORED BY GIT ] --------------
 ├── .git/                        # Git tracking (Hidden)
 ├── data/                        # Leopard datasets & negative samples 
 │   ├── test/
 │   ├── train/
 │   └── val/
-├── venv/                        # Virtual environment 
+├── .venv/ ...etc                # Python virtual environment 
 └── *.zip / *.rar                # Compressed data archives
 ```
