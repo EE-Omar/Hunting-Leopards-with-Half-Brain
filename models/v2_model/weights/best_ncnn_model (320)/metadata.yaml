@@ -1,6 +1,6 @@
 description: Ultralytics YOLO26n model trained on /content/data/data.yaml
 author: Ultralytics
-date: '2026-07-20T17:43:59.529748'
+date: '2026-07-21T09:20:44.025997'
 version: 8.4.84
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
@@ -8,8 +8,8 @@ stride: 32
 task: detect
 batch: 1
 imgsz:
-- 640
-- 640
+- 320
+- 320
 names:
   0: leopard
   1: cheetah
