@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Split Inference Latency Benchmark</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Courier New', monospace; background: #0f1117; color: #e2e8f0; padding: 28px; }
+h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+.subtitle { font-size: 12px; color: #64748b; margin-bottom: 28px; }
+.section { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin: 28px 0 12px; border-bottom: 1px solid #1e2330; padding-bottom: 6px; }
+.chart-box { background: #131720; border: 1px solid #1e2a3a; border-radius: 8px; padding: 20px 20px 12px; margin-bottom: 20px; }
+.chart-title { font-size: 12px; color: #94a3b8; margin-bottom: 14px; }
+canvas { display: block; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat { background: #131720; border: 1px solid #1e2a3a; border-radius: 8px; padding: 14px 16px; }
+.stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.stat-val { font-size: 22px; font-weight: 700; }
+.stat-sub { font-size: 10px; color: #475569; margin-top: 3px; }
+.note { background: #0d1520; border-left: 3px solid #3b82f6; padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 12px; color: #94a3b8; line-height: 1.7; margin-bottom: 20px; }
+.note b { color: #e2e8f0; }
+.legend { display: flex; gap: 18px; font-size: 11px; color: #94a3b8; margin-bottom: 10px; flex-wrap: wrap; }
+.ld { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; text-align: left; border-bottom: 1px solid #1e2a3a; }
+td { padding: 9px 12px; border-bottom: 1px solid #1a2030; }
+tr:last-child td { border-bottom: none; }
+.g { color: #34d399; } .y { color: #fbbf24; } .r { color: #f87171; } .b { color: #60a5fa; }
+</style>
+</head>
+<body>
+
+<h1>Split Inference Latency Benchmark</h1>
+<div class="subtitle">YOLO26 Nano · Pi3 backbone → Laptop head · Tailscale/TCP · Tensor-only (no image transfer)</div>
+
+<div class="section">Summary Statistics</div>
+
+<div class="stats-grid">
+  <div class="stat">
+    <div class="stat-label">640×640 Total avg</div>
+    <div class="stat-val r">5,209 ms</div>
+    <div class="stat-sub">0.19 FPS · n=33 frames</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">256×256 Total avg</div>
+    <div class="stat-val g">246 ms</div>
+    <div class="stat-sub">~2.0 FPS · n=136 frames</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Speedup</div>
+    <div class="stat-val g">21×</div>
+    <div class="stat-sub">640 → 256 resolution</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Tensor size</div>
+    <div class="stat-val y">3.27 MB → 0.52 MB</div>
+    <div class="stat-sub">6× smaller at 256</div>
+  </div>
+</div>
+
+<div class="section">Component Breakdown — 640 vs 256 (Averages)</div>
+
+<div class="chart-box">
+  <div class="chart-title">Stacked bar: Backbone + Send + Head per resolution (ms)</div>
+  <div class="legend">
+    <span><span class="ld" style="background:#ef4444"></span>Send (Tailscale)</span>
+    <span><span class="ld" style="background:#f59e0b"></span>Backbone (Pi3)</span>
+    <span><span class="ld" style="background:#3b82f6"></span>Head (Laptop)</span>
+  </div>
+  <canvas id="cBar" height="220"></canvas>
+</div>
+
+<div class="section">Per-Frame Latency — 256×256 (136 frames)</div>
+
+<div class="chart-box">
+  <div class="chart-title">Line chart: per-component latency over time (ms)</div>
+  <div class="legend">
+    <span><span class="ld" style="background:#ef4444"></span>Send</span>
+    <span><span class="ld" style="background:#f59e0b"></span>Backbone</span>
+    <span><span class="ld" style="background:#3b82f6"></span>Head</span>
+    <span><span class="ld" style="background:#a78bfa"></span>Total</span>
+  </div>
+  <canvas id="cLine" height="240"></canvas>
+</div>
+
+<div class="section">Detailed Breakdown Table</div>
+
+<div class="chart-box">
+<table>
+  <thead><tr>
+    <th>Resolution</th><th>Backbone avg</th><th>Send avg</th><th>Head avg</th><th>Total avg</th><th>FPS</th><th>Tensor</th><th>Bottleneck</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td class="r">640 × 640</td>
+      <td>718 ms</td>
+      <td class="r">4,273 ms (82%)</td>
+      <td>218 ms</td>
+      <td class="r">5,209 ms</td>
+      <td class="r">0.19</td>
+      <td>3.27 MB</td>
+      <td class="r">Network</td>
+    </tr>
+    <tr>
+      <td class="g">256 × 256</td>
+      <td class="y">134 ms (54%)</td>
+      <td>55 ms (22%)</td>
+      <td>58 ms (24%)</td>
+      <td class="g">246 ms</td>
+      <td class="g">~2.0</td>
+      <td>0.52 MB</td>
+      <td class="y">Pi3 Backbone</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <b>Key shift:</b> At 640×640 the network was 82% of latency. At 256×256 the bottleneck moved to the Pi3 backbone (54%). Send dropped from 4,273ms to 55ms — a 78× improvement. The Pi3 is now the ceiling, not the network.
+</div>
+
+<script>
+const backbone640_avg = 718, send640_avg = 4273, head640_avg = 218;
+const backbone256_avg = 134, send256_avg = 55, head256_avg = 58;
+
+const backbone256 = [95.44,149.12,133.14,114.17,142.35,143.97,100.30,144.46,110.71,133.66,86.58,89.76,92.29,238.71,85.12,163.12,84.82,88.19,85.94,140.16,96.65,138.29,86.18,171.78,86.16,117.51,85.88,134.50,85.89,83.94,92.97,86.07,100.29,170.16,86.35,116.20,85.86,89.33,89.85,116.33,85.74,134.25,85.74,115.66,186.49,151.28,139.28,86.22,92.34,131.28,130.37,90.40,140.18,86.80,164.71,91.14,201.94,86.72,85.45,86.31,85.99,86.77,86.59,88.92,105.75,90.07,86.64,86.03,86.27,90.35,111.82,187.00,103.26,120.70,102.97,86.29,244.92,166.36,179.09,206.74,192.60,166.92,147.86,149.24,212.30,190.22,205.90,111.13,136.64,85.20,91.48,177.97,240.80,166.66,155.83,230.31,151.73,238.18,151.71,226.10,170.46,108.81,105.41,114.25,243.99,171.02,229.38,186.74,190.37,192.15,207.03,231.73,195.41,113.73,114.25,160.43,83.44,172.03,170.80,255.86,244.56,104.53,95.06,129.14,103.91,111.02,88.91,91.06,97.62,85.81,87.79,145.06,151.77,95.92,233.76,141.09];
+const send256 = [145.83,790.40,515.43,184.76,17.97,86.10,49.08,34.30,601.69,21.24,68.28,4.39,316.75,13.90,27.51,27.25,145.13,71.05,10.42,17.29,22.55,24.59,82.98,20.88,113.25,43.98,13.09,35.11,13.41,16.78,15.87,4.24,142.38,129.94,36.62,109.00,155.71,6.81,106.18,17.73,52.66,66.59,48.04,67.18,83.52,20.05,99.73,82.99,7.92,108.60,10.95,51.38,8.00,13.88,9.40,152.67,6.27,19.27,146.24,41.58,173.07,75.91,92.58,84.38,34.45,122.30,90.59,50.90,12.01,4.31,11.42,18.32,22.52,4.06,4.22,9.20,7.18,7.16,7.96,5.47,8.20,8.28,9.10,10.79,5.81,15.36,8.08,8.03,4.08,4.06,283.87,4.24,4.11,3.90,6.96,9.20,3.97,7.67,7.12,8.68,5.97,4.09,7.19,6.71,3.99,7.04,5.97,5.44,5.71,6.00,6.86,10.30,8.24,4.48,5.14,5.46,555.67,8.94,6.48,4.91,5.27,5.17,7.10,17.90,39.52,6.02,6.74,6.59,6.62,15.54,7.00,4.53,7.41,3.97,5.17,3.99];
+const head256 = [67.75,8.06,24.68,34.54,11.57,8.87,9.89,44.18,18.48,7.33,9.14,8.30,8.48,24.21,7.70,5.26,6.70,8.30,5.24,4.41,50.69,8.63,29.16,12.73,11.85,8.72,9.60,181.16,25.22,8.54,14.86,7.66,12.37,12.72,4.26,8.18,219.33,481.04,92.14,121.06,176.76,86.25,87.12,71.41,124.85,142.75,70.90,263.06,151.55,266.08,129.15,48.83,41.99,45.84,26.24,46.24,46.31,15.49,85.26,55.40,34.02,52.18,41.60,41.30,34.40,62.12,130.46,146.13,263.13,146.82,215.26,74.25,84.14,23.86,40.11,30.12,40.56,37.76,63.77,49.59,31.56,58.89,64.15,27.33,55.76,53.54,52.74,48.82,15.95,27.10,44.38,61.44,36.14,51.99,38.17,62.66,38.93,52.29,30.34,53.54,43.56,34.59,46.19,35.19,78.46,48.05,42.86,43.17,59.25,29.93,29.23,69.64,30.83,32.40,60.55,81.09,73.99,45.28,34.37,26.77,43.14,37.25,49.88,49.43,160.05,208.22,8.21,96.28,26.00,37.15,19.46,8.04,32.94,26.17,8.30,9.27];
+const total256 = backbone256.map((b,i) => b + send256[i] + head256[i]);
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function setupCanvas(id, hPx) {
+  const canvas = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 40;
+  canvas.width = W * dpr; canvas.height = hPx * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = hPx + 'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  return { ctx, W, H: hPx };
+}
+
+function drawGrid(ctx, x0, y0, w, h, nY, maxY, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= nY; i++) {
+    const y = y0 + h - (i / nY) * h;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
+    ctx.fillStyle = '#4b5563'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillText((maxY * i / nY / 1000).toFixed(1) + 's', x0 - 5, y + 3);
+  }
+}
+
+function axisLabel(ctx, x, y, text) {
+  ctx.fillStyle = '#4b5563'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(text, x, y);
+}
+
+// ─── Chart 1: grouped/stacked bar ─────────────────────────────────────────────
+(function() {
+  const { ctx, W, H } = setupCanvas('cBar', 220);
+  const padL = 52, padR = 20, padT = 10, padB = 30;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const maxY = 5500;
+
+  drawGrid(ctx, padL, padT, cW, cH, 5, maxY, '#1e2a3a');
+
+  const groups = [
+    { label: '640×640', b: backbone640_avg, s: send640_avg, h: head640_avg },
+    { label: '256×256', b: backbone256_avg, s: send256_avg, h: head256_avg },
+  ];
+  const gw = cW / groups.length;
+  const bw = gw * 0.45;
+
+  groups.forEach((g, i) => {
+    const cx = padL + gw * i + gw / 2;
+    const x = cx - bw / 2;
+    const colors = ['#ef4444', '#f59e0b', '#3b82f6'];
+    const vals = [g.s, g.b, g.h];
+    let yBottom = padT + cH;
+    vals.forEach((v, vi) => {
+      const barH = Math.min((v / maxY) * cH, cH);
+      ctx.fillStyle = colors[vi];
+      ctx.fillRect(x, yBottom - barH, bw, barH);
+      if (barH > 14) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(Math.round(v) + 'ms', x + bw/2, yBottom - barH + 12);
+      }
+      yBottom -= barH;
+    });
+    // total label
+    const total = g.s + g.b + g.h;
+    const totalBarH = Math.min((total / maxY) * cH, cH);
+    ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+    ctx.fillText((total/1000).toFixed(2) + 's', cx, padT + cH - totalBarH - 6);
+    axisLabel(ctx, cx, H - 8, g.label);
+  });
+})();
+
+// ─── Chart 2: line chart per frame ────────────────────────────────────────────
+(function() {
+  const { ctx, W, H } = setupCanvas('cLine', 240);
+  const padL = 52, padR = 16, padT = 10, padB = 30;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const n = backbone256.length;
+  const maxY = 900; // clip at 900ms so spikes don't dominate; total is separate
+
+  drawGrid(ctx, padL, padT, cW, cH, 6, maxY, '#1e2a3a');
+
+  // x-axis labels
+  for (let i = 0; i <= 5; i++) {
+    const frame = Math.round(i * (n - 1) / 5);
+    axisLabel(ctx, padL + (frame / (n-1)) * cW, H - 8, 'f' + (frame+1));
+  }
+
+  function drawLine(data, color, clip) {
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = padL + (i / (n - 1)) * cW;
+      const y = padT + cH - Math.min(v, clip) / clip * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  // Total (clipped at 900 for display, real max ~1390)
+  drawLine(total256, '#a78bfa', maxY);
+  drawLine(send256,  '#ef4444', maxY);
+  drawLine(backbone256, '#f59e0b', maxY);
+  drawLine(head256,  '#3b82f6', maxY);
+
+  // Clip note
+  ctx.fillStyle = '#475569'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+  ctx.fillText('* spikes clipped at 900ms for readability', W - padR, padT + 12);
+})();
+</script>
+</body>
+</html>
