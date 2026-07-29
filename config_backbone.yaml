@@ -1,0 +1,16 @@
+# ── Backbone (Pi) Configuration ───────────────────────────────────────────────
+# Run on Pi. Edit head_ip to match laptop Tailscale IP.
+
+network:
+  head_ip: 100.105.225.54     # Laptop Tailscale IP
+  port: 5000
+
+model:
+  backbone: models/split/backbone_256.onnx
+  imgsz: 256                  # 256 or 640
+
+source:
+  type: images                # images | camera
+  images_path: data/images/
+  camera_device: 0
+  fps: 2                      # only used when type = images

@@ -1,0 +1,17 @@
+# ── Head (Laptop) Configuration ────────────────────────────────────────────────
+# Run on Laptop. Port must match config_backbone.yaml.
+
+network:
+  port: 5000
+
+model:
+  head: models/split/head_256.onnx
+  imgsz: 256                  # must match config_backbone.yaml
+
+detection:
+  conf_threshold: 0.5
+  target_class: 0             # 0=leopard, -1=all classes
+
+output:
+  save: false                 # true = save annotated images to results/detections/
+  display: false              # true = show window (requires display)

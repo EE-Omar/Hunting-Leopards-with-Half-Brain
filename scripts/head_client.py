@@ -10,7 +10,7 @@ Examples:
     python3 laptop_head_client.py models/split_640/head_640.onnx --port 5000 --imgsz 640
     
     # Test mode (uses local images)
-    python3 laptop_head_client.py models/split_640/head_640.onnx --port 5000 --imgsz 640 --test-images images/
+    python3 laptop_head_client.py models/split_640/head_640.onnx --port 5000 --imgsz 640 --test-images data/images/
 """
 
 import onnxruntime as ort
@@ -48,50 +48,23 @@ class HeadClient:
         return outputs[0]
     
     def decode_detections(self, raw_output, conf_threshold=0.3, target_class=0):
-        """
-        Decode YOLO26 (1, 300, 6) output format.
-        
-        Output format: [cx, cy, w, h, confidence, class_value]
-        
-        Args:
-            raw_output: (1, 300, 6) tensor from head
-            conf_threshold: Filter by confidence score
-            target_class: Filter by class (0=leopard)
-        
-        Returns:
-            list of detections: [(x1, y1, x2, y2, confidence, class_id), ...]
-        """
         detections = []
         
-        # raw_output shape: (1, 300, 6)
-        detections_raw = raw_output[0]  # (300, 6)
-        
-        for detection in detections_raw:
-            cx, cy, w, h, confidence, class_val = detection
+        for detection in raw_output[0]:
+            x1, y1, x2, y2, confidence, class_val = detection
             
-            # Filter by confidence
             if confidence < conf_threshold:
                 continue
             
-            # Note: class_val might not be exact class ID in YOLO26
-            # For now, we accept all high-confidence detections
-            # and filter by class in post-processing if needed
+            cls_id = int(round(float(class_val)))
+            if target_class != -1 and cls_id != target_class:
+                continue
             
-            # Convert center + size to corners, rescale to image space
-            # YOLO outputs in normalized coordinates (0-1 range) or model space
-            # Need to scale to actual image size
-            x1 = cx - w / 2
-            y1 = cy - h / 2
-            x2 = cx + w / 2
-            y2 = cy + h / 2
+            x1 = max(0, min(float(x1), self.imgsz))
+            y1 = max(0, min(float(y1), self.imgsz))
+            x2 = max(0, min(float(x2), self.imgsz))
+            y2 = max(0, min(float(y2), self.imgsz))
             
-            # Clamp to image bounds
-            x1 = max(0, min(x1, self.imgsz))
-            y1 = max(0, min(y1, self.imgsz))
-            x2 = max(0, min(x2, self.imgsz))
-            y2 = max(0, min(y2, self.imgsz))
-            
-            # Only add if box has area
             if (x2 - x1) > 1 and (y2 - y1) > 1:
                 detections.append({
                     'x1': x1,
@@ -99,14 +72,20 @@ class HeadClient:
                     'x2': x2,
                     'y2': y2,
                     'confidence': float(confidence),
-                    'class_value': float(class_val),
-                    'cx': float(cx),
-                    'cy': float(cy),
-                    'w': float(w),
-                    'h': float(h),
+                    'class_value': cls_id,
                 })
         
         return detections
+
+    def print_detections(self, detections):
+        if not detections:
+            print("  No detections")
+            return
+        
+        for i, det in enumerate(detections):
+            print(f"  [{i}] Box: ({det['x1']:.1f}, {det['y1']:.1f}) -> ({det['x2']:.1f}, {det['y2']:.1f}) | "
+                  f"Conf: {det['confidence']:.3f} | "
+                  f"Class: {det['class_value']}")
     
     def print_detections(self, detections):
         """Pretty-print detections"""
@@ -117,7 +96,7 @@ class HeadClient:
         for i, det in enumerate(detections):
             print(f"  [{i}] Box: ({det['x1']:.1f}, {det['y1']:.1f}) -> ({det['x2']:.1f}, {det['y2']:.1f}) | "
                   f"Conf: {det['confidence']:.3f} | "
-                  f"Class: {det['class_value']:.3f}")
+                  f"Class: {det['class_value']}")
 
 def receive_tensor(sock):
     """
@@ -169,6 +148,8 @@ def main():
     parser.add_argument("--conf", type=float, default=0.3, help="Confidence threshold (default: 0.3)")
     parser.add_argument("--test-images", type=str, default=None, 
                         help="Test mode: generate backbone tensors from images locally")
+    parser.add_argument("--backbone", type=str, default=None,
+                        help="Path to backbone model (used in test mode)")
     
     args = parser.parse_args()
     
@@ -180,23 +161,28 @@ def main():
         print(f"\n[*] TEST MODE: Using local images from {args.test_images}")
         print(f"    (Not waiting for Pi connection)")
         
-        # Try to load backbone from nearby location
-        backbone_paths = [
-            Path(args.head_model).parent / f"backbone_{args.imgsz}.onnx",
-            Path("models") / f"backbone_{args.imgsz}.onnx",
-            Path("models/split") / f"backbone_{args.imgsz}.onnx",
-        ]
-        
-        backbone_path = None
-        for p in backbone_paths:
-            if p.exists():
-                backbone_path = p
-                break
-        
-        if backbone_path is None:
-            print(f"[!] Could not find backbone model")
-            print(f"    Searched: {[str(p) for p in backbone_paths]}")
-            sys.exit(1)
+        # Use explicit --backbone if provided, otherwise search
+        if args.backbone:
+            backbone_path = Path(args.backbone)
+            if not backbone_path.exists():
+                print(f"[!] Backbone not found at: {backbone_path}")
+                sys.exit(1)
+        else:
+            backbone_paths = [
+                Path(args.head_model).parent / f"backbone_{args.imgsz}.onnx",
+                Path("models") / f"backbone_{args.imgsz}.onnx",
+                Path("models/split") / f"backbone_{args.imgsz}.onnx",
+            ]
+            backbone_path = None
+            for p in backbone_paths:
+                if p.exists():
+                    backbone_path = p
+                    break
+            if backbone_path is None:
+                print(f"[!] Could not find backbone model")
+                print(f"    Searched: {[str(p) for p in backbone_paths]}")
+                print(f"    Fix: pass --backbone path/to/backbone_256.onnx explicitly")
+                sys.exit(1)
         
         print(f"[✓] Found backbone: {backbone_path}")
         backbone_session = ort.InferenceSession(
