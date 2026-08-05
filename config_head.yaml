@@ -8,6 +8,10 @@ model:
   head: models/split/head_256.onnx
   imgsz: 256                  # must match config_backbone.yaml
 
+# When the backbone runs with bottleneck.enabled, point `head` above at
+# models/split/dec_head_256.onnx instead. The head needs no other changes — the uint8
+# scale/zero_point travel in the wire header and are applied on receipt.
+
 detection:
   conf_threshold: 0.5
   target_class: 0             # 0=leopard, -1=all classes

@@ -9,6 +9,14 @@ model:
   backbone: models/split/backbone_256.onnx
   imgsz: 256                  # 256 or 640
 
+bottleneck:
+  # Learned autoencoder at the layer-4 split. Shrinks the wire payload from
+  # 512 KB/frame (fp32) to 16 KB/frame (uint8). See scripts/bottleneck/.
+  # When enabled, `backbone` above must point at backbone_enc_<imgsz>.onnx and the
+  # head must use the matching dec_head_<imgsz>.onnx.
+  enabled: false
+  quant_meta: models/split/bottleneck_256.json
+
 source:
   type: images                # images | camera
   images_path: data/images/

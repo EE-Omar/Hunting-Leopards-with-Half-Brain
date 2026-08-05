@@ -19,17 +19,26 @@ import numpy as np
 import socket
 import sys
 import time
+import json
 import struct
 from pathlib import Path
 import argparse
 
 class BackboneServer:
-    def __init__(self, backbone_path, laptop_ip, port=5000, imgsz=640):
+    def __init__(self, backbone_path, laptop_ip, port=5000, imgsz=640, quant_meta=None):
         self.backbone_path = Path(backbone_path)
         self.laptop_ip = laptop_ip
         self.port = port
         self.imgsz = imgsz
-        
+
+        # (scale, zero_point) when streaming a quantized bottleneck tensor, else None.
+        self.quant = None
+        if quant_meta:
+            meta = json.loads(Path(quant_meta).read_text())
+            self.quant = (float(meta["scale"]), float(meta["zero_point"]))
+            print(f"[*] uint8 wire quantization: scale={self.quant[0]:.6g} "
+                  f"zero_point={self.quant[1]:.0f}")
+
         print(f"[*] Loading backbone model: {self.backbone_path}")
         self.session = ort.InferenceSession(
             str(self.backbone_path),
@@ -63,29 +72,34 @@ class BackboneServer:
     def send_tensor(self, sock, tensor):
         """
         Send tensor over TCP with header.
-        Format: [dtype(1 byte)] [shape(4 bytes each)] [data]
+
+        Format: [dtype(1)] [num_dims(1)] [shape(4 each)] {[scale(4)] [zero_point(4)]} [data]
+
+        dtype 1 = float32 (raw layer-4 tensor, 512 KB/frame at 256)
+        dtype 2 = uint8   (bottleneck tensor + affine quant params, 16 KB/frame)
+
+        The uint8 path is what makes splitting worth doing at all — see
+        scripts/bottleneck/. Quantization is done here in numpy rather than in the
+        ONNX graph, so the exported models stay FP32.
         """
-        # Ensure tensor is float32
-        tensor = tensor.astype(np.float32)
-        
-        # Pack dtype
-        dtype_byte = b'\x01'  # 1 = float32
-        
-        # Pack shape
-        shape_bytes = struct.pack(f'{len(tensor.shape)}I', *tensor.shape)
-        
-        # Flatten and pack data
-        tensor_flat = tensor.flatten()
-        data_bytes = tensor_flat.tobytes()
-        
-        # Send header: dtype (1) + num_dims (1) + shape + data
         num_dims = len(tensor.shape)
-        header = struct.pack('BB', 1, num_dims) + shape_bytes
-        
-        # Send all
+
+        if self.quant is None:
+            tensor = tensor.astype(np.float32)
+            header = struct.pack('BB', 1, num_dims)
+            header += struct.pack(f'{num_dims}I', *tensor.shape)
+            data_bytes = tensor.tobytes()
+        else:
+            scale, zero_point = self.quant
+            q = np.clip(np.round(tensor.astype(np.float32) / scale + zero_point), 0, 255)
+            q = q.astype(np.uint8)
+            header = struct.pack('BB', 2, num_dims)
+            header += struct.pack(f'{num_dims}I', *q.shape)
+            header += struct.pack('ff', scale, zero_point)
+            data_bytes = q.tobytes()
+
         sock.sendall(header + data_bytes)
-        
-        return len(header + data_bytes)
+        return len(header) + len(data_bytes)
 
 def receive_from_camera(cap, frame_count=0):
     """Read frame from camera"""
@@ -122,15 +136,18 @@ def main():
     parser.add_argument("--camera", type=int, default=None, help="Camera device (0, 1, etc.)")
     parser.add_argument("--images", type=str, default=None, help="Folder with test images")
     parser.add_argument("--fps", type=int, default=30, help="Frames per second for testing")
-    
+    parser.add_argument("--quant-meta", type=str, default=None,
+                        help="bottleneck_<imgsz>.json — enables uint8 wire quantization")
+
     args = parser.parse_args()
-    
+
     # Create backbone server
     server = BackboneServer(
         args.backbone_model,
         args.laptop_ip,
         args.port,
-        args.imgsz
+        args.imgsz,
+        quant_meta=args.quant_meta
     )
     
     # Connect to laptop

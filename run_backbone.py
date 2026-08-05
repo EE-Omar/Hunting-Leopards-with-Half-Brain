@@ -46,6 +46,16 @@ def main():
                 "--port", str(port),
                 "--imgsz", str(imgsz)]
 
+    bottleneck = cfg.get("bottleneck", {})
+    if bottleneck.get("enabled"):
+        quant_meta = bottleneck.get("quant_meta")
+        if not quant_meta or not Path(quant_meta).exists():
+            print(f"[!] bottleneck.enabled is true but quant_meta not found: {quant_meta}")
+            print(f"    Run: python scripts/bottleneck/export_bottleneck.py")
+            sys.exit(1)
+        print(f"    Bottleneck: {quant_meta} (uint8 wire)")
+        sys.argv += ["--quant-meta", quant_meta]
+
     if source_type == "images":
         if not images_path:
             print("[!] source.images_path not set in config_backbone.yaml")
