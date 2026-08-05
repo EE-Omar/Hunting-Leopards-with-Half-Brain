@@ -279,9 +279,8 @@ python scripts/profile_latency.py models/full/best_256.onnx data/images/ 256
 
 ## Backlog
 
-- [ ] Data download script (`setup_data.py`)
-- [ ] Live camera testing end-to-end
+- [x] Data download script (`setup_data.py`)
 - [ ] Compress tensor before TCP (Bottleneck)
 - [ ] Retrain with balanced dataset (current: ~9K leopard vs ~300-400 other classes)
-- [ ] YOLO26-small + FP16 quantization
+- [ ] Live camera testing end-to-end
 - [ ] Systemd service for auto-start on boot
