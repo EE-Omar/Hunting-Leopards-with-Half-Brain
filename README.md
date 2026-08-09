@@ -87,6 +87,8 @@ No raw images are transmitted — only the intermediate tensor.
 - **Output shape:** `(1, 300, 6)` → `[x1, y1, x2, y2, confidence, class_id]`
 - **No NMS needed** — the One-to-One Head outputs at most 300 detections directly
 
+Two size variants have been trained: **Nano** (used for the split-inference pipeline — small enough to fit the backbone split) and **Large** (`models/full/best_640.onnx`, `best_320.onnx`) — kept as a baseline to demonstrate why a full-size model doesn't fit the Pi and split inference is necessary.
+
 > ⚠️ INT8 quantization via Ultralytics export is currently broken for this model — use unquantized ONNX only.
 
 ### Classes
@@ -114,10 +116,11 @@ project/
 ├── config_head.yaml         ← head device config
 │
 ├── models/
-│   ├── full/                ← full unquantized ONNX models
-│   ├── split/               ← split backbone + head models
+│   ├── full/                ← full unquantized ONNX models (current: YOLO26 Large)
+│   ├── split/                ← split backbone + head models
 │   ├── ncnn/                ← ncnn exports (attempted, see results)
-│   └── v1/                  ← v1 single-class baseline
+│   ├── v1/                  ← archived: v1 single-class baseline
+│   └── v2/                  ← archived: v2 (Nano), incl. its own full/split/ncnn/bottleneck
 │
 ├── notebooks/               ← training notebooks (v1, v2)
 │
