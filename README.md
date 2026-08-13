@@ -117,12 +117,10 @@ project/
 │
 ├── models/
 │   ├── full/                ← full unquantized ONNX models (current: YOLO26 Large)
-│   ├── split/                ← split backbone + head models
-│   ├── ncnn/                ← ncnn exports (attempted, see results)
-│   ├── v1/                  ← archived: v1 single-class baseline
-│   └── v2/                  ← archived: v2 (Nano), incl. its own full/split/ncnn/bottleneck
+│   ├── split/                ← split backbone + head + bottleneck (gitignored, see below)
+│   └── v2/                  ← archived: v2 (Nano), kept for v2-vs-v3 comparison
 │
-├── notebooks/               ← training notebooks (v1, v2)
+├── notebooks/               ← training notebooks (v2, v3)
 │
 ├── results/
 │   ├── benchmarks/          ← latency reports

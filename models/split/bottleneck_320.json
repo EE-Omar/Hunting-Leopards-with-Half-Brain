@@ -1,0 +1,10 @@
+{
+  "imgsz": 320,
+  "channels": 16,
+  "grid": 40,
+  "scale": 0.05108868330717087,
+  "zero_point": 133,
+  "wire_bytes": 25600,
+  "backbone_enc": "backbone_enc_320.onnx",
+  "dec_head": "dec_head_320.onnx"
+}

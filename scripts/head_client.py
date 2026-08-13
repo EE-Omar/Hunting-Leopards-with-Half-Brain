@@ -7,10 +7,10 @@ Usage (Laptop):
     
 Examples:
     # Standard (wait for Pi to connect)
-    python3 laptop_head_client.py models/split_640/head_640.onnx --port 5000 --imgsz 640
+    python3 laptop_head_client.py models/split/head_320.onnx --port 5000 --imgsz 320
     
     # Test mode (uses local images)
-    python3 laptop_head_client.py models/split_640/head_640.onnx --port 5000 --imgsz 640 --test-images data/images/
+    python3 laptop_head_client.py models/split/head_320.onnx --port 5000 --imgsz 320 --test-images data/images/
 """
 
 import onnxruntime as ort
@@ -98,42 +98,69 @@ class HeadClient:
                   f"Conf: {det['confidence']:.3f} | "
                   f"Class: {det['class_value']}")
 
+def recv_exact(sock, n):
+    """Read exactly n bytes, or return None if the peer hangs up.
+
+    TCP does not guarantee recv() returns everything asked for. The payload loop below
+    always handled that, but the header reads did not — and short reads get more likely,
+    not less, as the bottleneck shrinks frames toward a single segment.
+    """
+    buf = b''
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            return None
+        buf += chunk
+    return buf
+
+
 def receive_tensor(sock):
     """
     Receive tensor from Pi over TCP.
-    Format: [dtype(1 byte)] [num_dims(1 byte)] [shape(4 bytes each)] [data]
+
+    Format: [dtype(1)] [num_dims(1)] [shape(4 each)] {[scale(4)] [zero_point(4)]} [data]
+
+    dtype 1 = float32 (raw layer-3 tensor)
+    dtype 2 = uint8   (bottleneck tensor, dequantized here using the header's params)
     """
     try:
-        # Receive header (dtype + num_dims)
-        header = sock.recv(2)
-        if not header:
+        header = recv_exact(sock, 2)
+        if header is None:
             return None
-        
         dtype_byte, num_dims = struct.unpack('BB', header)
-        
-        # Receive shape
-        shape_bytes = sock.recv(4 * num_dims)
+
+        shape_bytes = recv_exact(sock, 4 * num_dims)
+        if shape_bytes is None:
+            return None
         shape = struct.unpack(f'{num_dims}I', shape_bytes)
-        
-        # Calculate data size
+
+        if dtype_byte == 1:
+            dtype, itemsize, quant = np.float32, 4, None
+        elif dtype_byte == 2:
+            qp = recv_exact(sock, 8)
+            if qp is None:
+                return None
+            quant = struct.unpack('ff', qp)
+            dtype, itemsize = np.uint8, 1
+        else:
+            print(f"[!] Unknown wire dtype: {dtype_byte}")
+            return None
+
         total_elements = 1
         for s in shape:
             total_elements *= s
-        
-        # Receive data
-        data_size = total_elements * 4  # float32 = 4 bytes
-        data = b''
-        while len(data) < data_size:
-            chunk = sock.recv(min(4096, data_size - len(data)))
-            if not chunk:
-                print("[!] Connection closed by Pi")
-                return None
-            data += chunk
-        
-        # Unpack data
-        tensor = np.frombuffer(data, dtype=np.float32).reshape(shape)
+
+        data = recv_exact(sock, total_elements * itemsize)
+        if data is None:
+            print("[!] Connection closed by Pi")
+            return None
+
+        tensor = np.frombuffer(data, dtype=dtype).reshape(shape)
+        if quant is not None:
+            scale, zero_point = quant
+            tensor = (tensor.astype(np.float32) - zero_point) * scale
         return tensor
-    
+
     except Exception as e:
         print(f"[!] Error receiving tensor: {e}")
         return None
@@ -144,7 +171,7 @@ def main():
     )
     parser.add_argument("head_model", help="Path to head ONNX model")
     parser.add_argument("--port", type=int, default=5000, help="TCP port (default: 5000)")
-    parser.add_argument("--imgsz", type=int, default=640, help="Image size (256 or 640)")
+    parser.add_argument("--imgsz", type=int, default=320, help="Image size (320 or 640)")
     parser.add_argument("--conf", type=float, default=0.3, help="Confidence threshold (default: 0.3)")
     parser.add_argument("--test-images", type=str, default=None, 
                         help="Test mode: generate backbone tensors from images locally")
@@ -181,7 +208,7 @@ def main():
             if backbone_path is None:
                 print(f"[!] Could not find backbone model")
                 print(f"    Searched: {[str(p) for p in backbone_paths]}")
-                print(f"    Fix: pass --backbone path/to/backbone_256.onnx explicitly")
+                print(f"    Fix: pass --backbone path/to/backbone_320.onnx explicitly")
                 sys.exit(1)
         
         print(f"[✓] Found backbone: {backbone_path}")

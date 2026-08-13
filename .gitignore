@@ -221,5 +221,10 @@ __marimo__/
 models/split/_bottleneck_parts/
 models/bottleneck
 
+# Split ONNX artifacts are ~194 MB and are shipped to the Pis by scp, not by LFS —
+# a fresh clone would otherwise pull them against the 1 GB/month LFS bandwidth quota.
+# The tiny bottleneck_<imgsz>.json sidecar IS tracked; the wire needs it.
+models/split/*.onnx
+
 .claude/
 *.npy

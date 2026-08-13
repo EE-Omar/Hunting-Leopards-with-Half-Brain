@@ -1,5 +1,5 @@
 """
-Create split YOLO26 model: Backbone (Layer 0-4) + Head (Layer 4-output)
+Create split YOLO26 model: Backbone (Layer 0-3) + Head (Layer 3-output)
 Usage: python3 create_split_model.py <full_onnx_model> <output_dir> [imgsz]
 Example: python3 create_split_model.py models/best_640.onnx models/split_640 640
 """
@@ -14,7 +14,7 @@ def split_model(full_model_path, output_dir, imgsz=640):
     Split YOLO26 ONNX model into backbone and head.
     
     Args:
-        full_model_path: Path to full ONNX model (best_256.onnx or best_640.onnx)
+        full_model_path: Path to full ONNX model (best_320.onnx or best_640.onnx)
         output_dir: Directory to save backbone.onnx and head.onnx
         imgsz: Image size (256 or 640) - used for naming/tracking
     """
@@ -30,10 +30,11 @@ def split_model(full_model_path, output_dir, imgsz=640):
     print(f"[*] Full model inputs: {[inp.name for inp in full_model.graph.input]}")
     print(f"[*] Full model outputs: {[out.name for out in full_model.graph.output]}")
     
-    # Extract backbone: images -> /model.4/cv2/act/Mul_output_0
-    print(f"\n[*] Extracting backbone (Layer 0-4)...")
+    # Extract backbone: images -> /model.3/act/Mul_output_0
+    # Keep in sync with scripts/bottleneck/modules.SPLIT_TENSOR.
+    print(f"\n[*] Extracting backbone (Layer 0-3)...")
     backbone_input = "images"
-    backbone_output = "/model.4/cv2/act/Mul_output_0"
+    backbone_output = "/model.3/act/Mul_output_0"
     
     backbone_model = onnx.utils.extract_model(
         str(full_model_path),
@@ -44,10 +45,10 @@ def split_model(full_model_path, output_dir, imgsz=640):
     print(f"[✓] Backbone saved: {output_dir / f'backbone_{imgsz}.onnx'}")
     print(f"    Input: {backbone_input}")
     print(f"    Output: {backbone_output}")
-    print(f"    Expected output shape: (1, 128, 32, 32) or similar")
-    
-    # Extract head: /model.4/cv2/act/Mul_output_0 -> output0
-    print(f"\n[*] Extracting head (Layer 4-output)...")
+    print(f"    Expected output shape: (1, 256, {imgsz // 8}, {imgsz // 8})")
+
+    # Extract head: /model.3/act/Mul_output_0 -> output0
+    print(f"\n[*] Extracting head (Layer 3-output)...")
     head_input = backbone_output
     head_output = "output0"
     
