@@ -219,12 +219,16 @@ __marimo__/
 
 
 models/split/_bottleneck_parts/
-models/bottleneck
 
-# Split ONNX artifacts are ~194 MB and are shipped to the Pis by scp, not by LFS —
-# a fresh clone would otherwise pull them against the 1 GB/month LFS bandwidth quota.
-# The tiny bottleneck_<imgsz>.json sidecar IS tracked; the wire needs it.
-models/split/*.onnx
+# The feature cache is 2.3 GB and regenerable; the trained bottleneck weights are
+# 2.4 MB and are NOT regenerable without a full retrain, so they are tracked.
+models/bottleneck/*
+!models/bottleneck/*.pt
+
+# dec_head_*.onnx is 98 MB and is rebuildable from bneck_16ch.pt via
+# scripts/bottleneck/export_bottleneck.py, so it ships to the Pi 3 by scp rather
+# than costing every clone 98 MB of the 1 GB/month LFS bandwidth quota.
+models/split/dec_head_*.onnx
 
 .claude/
 *.npy
