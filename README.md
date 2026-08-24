@@ -12,14 +12,14 @@ at a 0.0197 mAP50-95 accuracy drop.
 
 ## Team
 
-| | |
-|---|---|
-| Omar Alharbi | omar.alharbi@kaust.edu.sa |
-| Abdullah Alhindi | abdullah.alhindi@kaust.edu.sa |
-| Abdullah Alghanim | abdullah.alghanim@kaust.edu.sa |
-| Rasheed Hamidaddin | rasheed.hamidaddin@kaust.edu.sa |
-| Basil Alshareef | basilahmed.alshareef@gmail.com |
-| Basil Alshehri | basil.alshehri55@gmail.com |
+| | Email | LinkedIn |
+|---|---|---|
+| Omar Alharbi | omaralharbiee@gmail.com | www.linkedin.com/in/omar-alharbi-070bab283/ |
+| Abdullah Alhindi | abdullah-ghulam@outlook.com | www.linkedin.com/in/abdullah-ghulam |
+| Abdullah Alghanim | a.gh.alghanim@gmail.com | www.linkedin.com/in/abdullah-alghanim-7012132a7/ |
+| Rasheed Hamidaddin | rasheedhamidaddin@gmail.com | www.linkedin.com/in/rasheed-hamidaddin-316501155/ |
+| Basil Alshareef | basil.alshehri55@gmail.com | www.linkedin.com/in/basil-alsharif-2380503b7/ |
+| Basil Alshehri | basilahmed.alshareef@gmail.com | |
 
 ---
 
