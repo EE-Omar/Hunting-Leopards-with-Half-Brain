@@ -232,3 +232,15 @@ models/split/dec_head_*.onnx
 
 .claude/
 *.npy
+
+# --- project (moved here from .git/info/exclude, which does not clone) ---
+data/
+runs/
+model V1.zip
+model V2.zip
+laptop_script.py
+plot.ipynb
+
+# Pi benchmarking harness: imports src.common / src.server, a package that
+# lives in the bench repo, not here. Cannot run from this checkout.
+scratch_pi/

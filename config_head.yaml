@@ -1,12 +1,12 @@
-# ── Head (Laptop) Configuration ────────────────────────────────────────────────
-# Run on Laptop. Port must match config_backbone.yaml.
+# ── Head (Pi 3) Configuration ──────────────────────────────────────────────────
+# Runs on the Pi 3. Port must match config_backbone.yaml.
 
 network:
   port: 5000
 
 model:
-  head: models/split/head_256.onnx
-  imgsz: 256                  # must match config_backbone.yaml
+  head: models/split/head_320.onnx
+  imgsz: 320                  # must match config_backbone.yaml
 
 detection:
   conf_threshold: 0.5

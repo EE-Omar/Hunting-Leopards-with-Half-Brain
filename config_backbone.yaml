@@ -1,16 +1,16 @@
 # ── Backbone (Pi) Configuration ───────────────────────────────────────────────
-# Run on Pi. Edit head_ip to match laptop Tailscale IP.
+# Runs on the Pi Zero 2 W. Edit head_ip to match the head device.
 
 network:
-  head_ip: 100.105.225.54     # Laptop Tailscale IP
+  head_ip: 192.168.1.10       # address of the head device
   port: 5000
 
 model:
-  backbone: models/split/backbone_256.onnx
-  imgsz: 256                  # 256 or 640
+  backbone: models/split/backbone_320.onnx
+  imgsz: 320                  # must match config_head.yaml
 
 source:
   type: images                # images | camera
-  images_path: data/images/
+  images_path: data/v2_yolo_dataset/valid/images
   camera_device: 0
   fps: 2                      # only used when type = images
