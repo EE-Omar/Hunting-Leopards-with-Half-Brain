@@ -18,8 +18,8 @@ at a 0.0197 mAP50-95 accuracy drop.
 | Abdullah Alhindi | abdullah-ghulam@outlook.com | www.linkedin.com/in/abdullah-ghulam |
 | Abdullah Alghanim | a.gh.alghanim@gmail.com | www.linkedin.com/in/abdullah-alghanim-7012132a7/ |
 | Rasheed Hamidaddin | rasheedhamidaddin@gmail.com | www.linkedin.com/in/rasheed-hamidaddin-316501155/ |
-| Basil Alshareef | basil.alshehri55@gmail.com | www.linkedin.com/in/basil-alsharif-2380503b7/ |
-| Basil Alshehri | basilahmed.alshareef@gmail.com | |
+| Basil Alshareef | basilahmed.alshareef@gmail.com  | www.linkedin.com/in/basil-alsharif-2380503b7/ |
+| Basil Alshehri | basil.alshehri55@gmail.com |
 
 ---
 
